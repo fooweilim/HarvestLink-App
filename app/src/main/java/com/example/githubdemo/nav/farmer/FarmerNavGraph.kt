@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.githubdemo.nav.popBackStackSafely
 import com.example.githubdemo.screen.farmer.AddProductScreen
 import com.example.githubdemo.screen.farmer.EditProductScreen
 import com.example.githubdemo.screen.farmer.FarmerDashboardScreen
@@ -14,31 +15,16 @@ import com.example.githubdemo.screen.farmer.FarmerProductScreen
 import com.example.githubdemo.screen.farmer.FarmerProfileScreen
 
 object FarmerRoute {
+    const val DASHBOARD = "dashboard"
+    const val PRODUCTS = "products"
+    const val ADD_PRODUCT = "addProduct"
+    const val EDIT_PRODUCT = "editProduct/{productId}"
+    const val ORDERS = "orders"
+    const val PROFILE = "profile"
 
-    const val DASHBOARD =
-        "dashboard"
+    private const val EDIT_PRODUCT_PREFIX = "editProduct"
 
-    const val PRODUCTS =
-        "products"
-
-    const val ADD_PRODUCT =
-        "addProduct"
-
-    const val EDIT_PRODUCT =
-        "editProduct/{productId}"
-
-    const val ORDERS =
-        "orders"
-
-    const val PROFILE =
-        "profile"
-
-    private const val EDIT_PRODUCT_PREFIX =
-        "editProduct"
-
-    fun getEditProductRoute(
-        productId: String
-    ): String {
+    fun getEditProductRoute(productId: String): String {
         return "$EDIT_PRODUCT_PREFIX/$productId"
     }
 }
@@ -50,149 +36,87 @@ fun FarmerNavGraph(
 ) {
     NavHost(
         navController = navController,
-
-        startDestination =
-            FarmerRoute.DASHBOARD
+        startDestination = FarmerRoute.DASHBOARD
     ) {
-        composable(
-            route =
-                FarmerRoute.DASHBOARD
-        ) {
+        composable(FarmerRoute.DASHBOARD) {
             FarmerDashboardScreen(
                 onNavigate = { route ->
-                    navigateToFarmerBottomRoute(
-                        navController =
-                            navController,
-
-                        route = route
-                    )
+                    navigateToFarmerBottomRoute(navController, route)
                 }
             )
         }
 
-        composable(
-            route =
-                FarmerRoute.PRODUCTS
-        ) {
+        composable(FarmerRoute.PRODUCTS) {
             FarmerProductScreen(
                 onAddProduct = {
-                    navController.navigate(
-                        FarmerRoute.ADD_PRODUCT
-                    )
-                },
-
-                onEditProduct = { product ->
-                    val productId =
-                        product.id
-
-                    if (
-                        !productId.isNullOrBlank()
-                    ) {
-                        navController.navigate(
-                            FarmerRoute
-                                .getEditProductRoute(
-                                    productId
-                                )
-                        )
+                    navController.navigate(FarmerRoute.ADD_PRODUCT) {
+                        launchSingleTop = true
                     }
                 },
+                onEditProduct = { product ->
+                    val productId = product.id
 
+                    if (!productId.isNullOrBlank()) {
+                        navController.navigate(
+                            FarmerRoute.getEditProductRoute(productId)
+                        ) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
                 onNavigate = { route ->
-                    navigateToFarmerBottomRoute(
-                        navController =
-                            navController,
-
-                        route = route
-                    )
+                    navigateToFarmerBottomRoute(navController, route)
                 }
             )
         }
 
-        composable(
-            route =
-                FarmerRoute.ADD_PRODUCT
-        ) {
+        composable(FarmerRoute.ADD_PRODUCT) { entry ->
             AddProductScreen(
                 onBack = {
-                    navController
-                        .popBackStack()
+                    navController.popBackStackSafely(entry)
                 },
-
                 onProductAdded = {
-                    navController
-                        .popBackStack()
+                    navController.popBackStackSafely(entry)
                 }
             )
         }
 
         composable(
-            route =
-                FarmerRoute.EDIT_PRODUCT,
-
+            route = FarmerRoute.EDIT_PRODUCT,
             arguments = listOf(
-                navArgument(
-                    "productId"
-                ) {
-                    type =
-                        NavType.StringType
+                navArgument("productId") {
+                    type = NavType.StringType
                 }
             )
-        ) { backStackEntry ->
+        ) { entry ->
             val productId =
-                backStackEntry
-                    .arguments
-                    ?.getString(
-                        "productId"
-                    )
-                    .orEmpty()
+                entry.arguments?.getString("productId").orEmpty()
 
             EditProductScreen(
                 productId = productId,
-
                 onBack = {
-                    navController
-                        .popBackStack()
+                    navController.popBackStackSafely(entry)
                 },
-
                 onUpdated = {
-                    navController
-                        .popBackStack()
+                    navController.popBackStackSafely(entry)
                 }
             )
         }
 
-        composable(
-            route =
-                FarmerRoute.ORDERS
-        ) {
+        composable(FarmerRoute.ORDERS) {
             FarmerOrdersScreen(
                 onNavigate = { route ->
-                    navigateToFarmerBottomRoute(
-                        navController =
-                            navController,
-
-                        route = route
-                    )
+                    navigateToFarmerBottomRoute(navController, route)
                 }
             )
         }
 
-        composable(
-            route =
-                FarmerRoute.PROFILE
-        ) {
+        composable(FarmerRoute.PROFILE) {
             FarmerProfileScreen(
                 onNavigate = { route ->
-                    navigateToFarmerBottomRoute(
-                        navController =
-                            navController,
-
-                        route = route
-                    )
+                    navigateToFarmerBottomRoute(navController, route)
                 },
-
-                onSignOut =
-                    onSignOut
+                onSignOut = onSignOut
             )
         }
     }
@@ -202,33 +126,17 @@ private fun navigateToFarmerBottomRoute(
     navController: NavHostController,
     route: String
 ) {
-    val destination =
-        when (route) {
-            FarmerRoute.DASHBOARD ->
-                FarmerRoute.DASHBOARD
+    val destination = when (route) {
+        FarmerRoute.DASHBOARD -> FarmerRoute.DASHBOARD
+        FarmerRoute.PRODUCTS -> FarmerRoute.PRODUCTS
+        FarmerRoute.ADD_PRODUCT -> FarmerRoute.ADD_PRODUCT
+        FarmerRoute.ORDERS -> FarmerRoute.ORDERS
+        FarmerRoute.PROFILE -> FarmerRoute.PROFILE
+        else -> FarmerRoute.DASHBOARD
+    }
 
-            FarmerRoute.PRODUCTS ->
-                FarmerRoute.PRODUCTS
-
-            FarmerRoute.ADD_PRODUCT ->
-                FarmerRoute.ADD_PRODUCT
-
-            FarmerRoute.ORDERS ->
-                FarmerRoute.ORDERS
-
-            FarmerRoute.PROFILE ->
-                FarmerRoute.PROFILE
-
-            else ->
-                FarmerRoute.DASHBOARD
-        }
-
-    navController.navigate(
-        destination
-    ) {
-        popUpTo(
-            FarmerRoute.DASHBOARD
-        ) {
+    navController.navigate(destination) {
+        popUpTo(FarmerRoute.DASHBOARD) {
             saveState = true
         }
 

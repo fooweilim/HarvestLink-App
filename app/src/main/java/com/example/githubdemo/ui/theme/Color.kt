@@ -46,6 +46,7 @@ val DividerColor =
 
 val AccentOrange =
     Color(0xFFF58D52)
+
 val HarvestGreen =
     Color(0xFF195B45)
 
@@ -60,3 +61,4 @@ val TextDark =
 
 val AdminError =
     Color(0xFFB3261E)
+

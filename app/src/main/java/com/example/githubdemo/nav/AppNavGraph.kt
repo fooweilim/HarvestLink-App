@@ -1,8 +1,12 @@
 package com.example.githubdemo.nav
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +31,7 @@ import com.example.githubdemo.screen.FarmerDashboardScreen
 import com.example.githubdemo.screen.HomeScreen
 import com.example.githubdemo.screen.MealDetailScreen
 import com.example.githubdemo.screen.RoleSelectionScreen
+import com.example.githubdemo.screen.authentication.AuthRateLimitDialog
 import com.example.githubdemo.screen.authentication.FarmerSignUpScreen
 import com.example.githubdemo.screen.authentication.LoginScreen
 import com.example.githubdemo.screen.authentication.SignUpScreen
@@ -47,71 +52,44 @@ import com.example.githubdemo.viewmodel.authentication.AuthViewModel
 import com.example.githubdemo.viewmodel.foodbox.FoodBoxViewModel
 import com.example.githubdemo.viewmodel.market.CartViewModel
 
-private const val ROLE_ARGUMENT =
-    "role"
+private const val ROLE_ARGUMENT = "role"
+private const val PLAN_ID_ARGUMENT = "planId"
+private const val CART_ROUTE = "cart"
+private const val PAYMENT_ROUTE = "payment"
+private const val MEAL_FAVOURITES_ROUTE = "meal_favourites"
+private const val MEAL_ID_ARGUMENT = "mealId"
+private const val MEAL_DETAIL_ROUTE = "meal_detail/{mealId}"
 
-private const val PLAN_ID_ARGUMENT =
-    "planId"
-
-private const val CART_ROUTE =
-    "cart"
-
-private const val PAYMENT_ROUTE =
-    "payment"
-
-private const val MEAL_FAVOURITES_ROUTE =
-    "meal_favourites"
-
-private const val MEAL_ID_ARGUMENT =
-    "mealId"
-
-private const val MEAL_DETAIL_ROUTE =
-    "meal_detail/{mealId}"
-
-private fun getMealDetailRoute(
-    mealId: Int
-): String {
+private fun getMealDetailRoute(mealId: Int): String {
     return "meal_detail/$mealId"
 }
 
 @Composable
 fun AppNavGraph(
-    navController: NavHostController =
-        rememberNavController()
+    navController: NavHostController = rememberNavController()
 ) {
     val context = LocalContext.current
 
-    val authViewModel: AuthViewModel =
-        viewModel()
-
-    val cartViewModel: CartViewModel =
-        viewModel()
-
-    val foodBoxViewModel: FoodBoxViewModel =
-        viewModel()
+    val authViewModel: AuthViewModel = viewModel()
+    val cartViewModel: CartViewModel = viewModel()
+    val foodBoxViewModel: FoodBoxViewModel = viewModel()
 
     val savedRole = remember {
-        LocalAccountStorage
-            .getSelectedRole(context)
+        LocalAccountStorage.getSelectedRole(context)
     }
 
-    val startDestination =
-        if (savedRole == null) {
-            AppData.ROLE_SELECTION_ROUTE
-        } else {
-            AppData.getRoleDestination(
-                savedRole
-            )
-        }
+    val startDestination = if (savedRole == null) {
+        AppData.ROLE_SELECTION_ROUTE
+    } else {
+        AppData.getRoleDestination(savedRole)
+    }
 
-    val navBackStackEntry by
-    navController
-        .currentBackStackEntryAsState()
+    val currentEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentEntry?.destination?.route
 
-    val currentRoute =
-        navBackStackEntry
-            ?.destination
-            ?.route
+    val isAuthPage =
+        currentRoute == AppData.LOGIN_ROUTE ||
+                currentRoute == AppData.SIGN_UP_ROUTE
 
     val isMealSubPage =
         currentRoute == MEAL_FAVOURITES_ROUTE ||
@@ -121,40 +99,22 @@ fun AppNavGraph(
         currentRoute != null &&
                 currentRoute in AppData.foodBoxRoutes
 
-    val selectedBottomRoute =
-        when {
-            isMealSubPage ->
-                AppData.MEALS_ROUTE
-
-            isFoodBoxPage ->
-                AppData.FOOD_BOX_ROUTE
-
-            else ->
-                currentRoute
-        }
+    val selectedBottomRoute = when {
+        isMealSubPage -> AppData.MEALS_ROUTE
+        isFoodBoxPage -> AppData.FOOD_BOX_ROUTE
+        else -> currentRoute
+    }
 
     val showBottomNavigation =
-        currentRoute in AppData.buyerRoutes ||
-                isMealSubPage
+        currentRoute in AppData.buyerRoutes || isMealSubPage
 
     val onPageNavigate: (String) -> Unit = { route ->
-
-        if (
-            route ==
-            AppData.ROLE_SELECTION_ROUTE
-        ) {
+        if (route == AppData.ROLE_SELECTION_ROUTE) {
             authViewModel.signOut {
-                navController.navigate(
-                    AppData.ROLE_SELECTION_ROUTE
-                ) {
-                    popUpTo(
-                        navController
-                            .graph
-                            .startDestinationId
-                    ) {
+                navController.navigate(AppData.ROLE_SELECTION_ROUTE) {
+                    popUpTo(navController.graph.id) {
                         inclusive = true
                     }
-
                     launchSingleTop = true
                 }
             }
@@ -166,24 +126,20 @@ fun AppNavGraph(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-
+        modifier = if (isAuthPage) {
+            Modifier.fillMaxSize().imePadding()
+        } else {
+            Modifier.fillMaxSize()
+        },
         bottomBar = {
             if (showBottomNavigation) {
                 AppBottomNavigationBar(
-                    currentRoute =
-                        selectedBottomRoute,
-
+                    currentRoute = selectedBottomRoute,
                     onItemClick = { route ->
-                        navController.navigate(
-                            route
-                        ) {
-                            popUpTo(
-                                AppData.HOME_ROUTE
-                            ) {
+                        navController.navigate(route) {
+                            popUpTo(AppData.HOME_ROUTE) {
                                 saveState = true
                             }
-
                             launchSingleTop = true
                             restoreState = true
                         }
@@ -192,28 +148,19 @@ fun AppNavGraph(
             }
         }
     ) { innerPadding ->
-
         NavHost(
             navController = navController,
-            startDestination =
-                startDestination,
-
+            startDestination = startDestination,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
-            composable(
-                route =
-                    AppData.ROLE_SELECTION_ROUTE
-            ) {
+            composable(AppData.ROLE_SELECTION_ROUTE) {
                 RoleSelectionScreen(
-                    onRoleSelected = {
-                            selectedRole ->
-
+                    onRoleSelected = { selectedRole ->
                         navController.navigate(
-                            AppData.getLoginRoute(
-                                selectedRole
-                            )
+                            AppData.getLoginRoute(selectedRole)
                         ) {
                             launchSingleTop = true
                         }
@@ -223,609 +170,383 @@ fun AppNavGraph(
 
             composable(
                 route = AppData.LOGIN_ROUTE,
-
                 arguments = listOf(
-                    navArgument(
-                        ROLE_ARGUMENT
-                    ) {
-                        type =
-                            NavType.StringType
+                    navArgument(ROLE_ARGUMENT) {
+                        type = NavType.StringType
                     }
                 )
-            ) { backStackEntry ->
-
+            ) { entry ->
                 val userRole =
-                    backStackEntry
-                        .arguments
-                        ?.getString(
-                            ROLE_ARGUMENT
-                        )
+                    entry.arguments?.getString(ROLE_ARGUMENT)
 
                 if (
                     userRole != null &&
-                    UserRole.isValidRole(
-                        userRole
-                    )
+                    UserRole.isValidRole(userRole)
                 ) {
                     LoginScreen(
                         userRole = userRole,
-
-                        onLoginSuccess = {
-                                loggedInRole ->
-
+                        onLoginSuccess = { loggedInRole ->
                             navController.navigate(
-                                AppData
-                                    .getRoleDestination(
-                                        loggedInRole
-                                    )
+                                AppData.getRoleDestination(loggedInRole)
                             ) {
-                                popUpTo(
-                                    AppData
-                                        .ROLE_SELECTION_ROUTE
-                                ) {
+                                popUpTo(navController.graph.id) {
                                     inclusive = true
                                 }
-
                                 launchSingleTop = true
                             }
                         },
-
-                        onSignUpClick = {
-                                signUpRole ->
-
-                            if (
-                                signUpRole !=
-                                UserRole.ADMIN
-                            ) {
+                        onSignUpClick = { signUpRole ->
+                            if (signUpRole != UserRole.ADMIN) {
                                 navController.navigate(
-                                    AppData
-                                        .getSignUpRoute(
-                                            signUpRole
-                                        )
-                                )
+                                    AppData.getSignUpRoute(signUpRole)
+                                ) {
+                                    launchSingleTop = true
+                                }
                             } else {
-                                authViewModel
-                                    .showErrorMessage(
-                                        "Admin accounts cannot sign up."
-                                    )
+                                authViewModel.showErrorMessage(
+                                    "Admin accounts cannot sign up."
+                                )
                             }
                         },
-
                         onBackClick = {
-                            authViewModel
-                                .clearMessage()
-
-                            navController
-                                .popBackStack()
+                            authViewModel.clearMessage()
+                            navController.popBackStackSafely(entry)
                         },
-
-                        authViewModel =
-                            authViewModel
+                        authViewModel = authViewModel
                     )
+                } else {
+                    TextButton(
+                        onClick = {
+                            navController.popBackStackSafely(entry)
+                        }
+                    ) {
+                        Text("Invalid role. Go back")
+                    }
                 }
             }
 
             composable(
-                route =
-                    AppData.SIGN_UP_ROUTE,
-
+                route = AppData.SIGN_UP_ROUTE,
                 arguments = listOf(
-                    navArgument(
-                        ROLE_ARGUMENT
-                    ) {
-                        type =
-                            NavType.StringType
+                    navArgument(ROLE_ARGUMENT) {
+                        type = NavType.StringType
                     }
                 )
-            ) { backStackEntry ->
-
+            ) { entry ->
                 val userRole =
-                    backStackEntry
-                        .arguments
-                        ?.getString(
-                            ROLE_ARGUMENT
-                        )
+                    entry.arguments?.getString(ROLE_ARGUMENT)
+
+                val returnToLogin: () -> Unit = {
+                    authViewModel.clearMessage()
+                    navController.popBackStackSafely(entry)
+                }
 
                 when (userRole) {
                     UserRole.BUYER -> {
                         SignUpScreen(
-                            userRole =
-                                UserRole.BUYER,
-
-                            onSignUpSuccess = {
-                                authViewModel
-                                    .clearMessage()
-
-                                navController
-                                    .popBackStack()
-                            },
-
-                            onLoginClick = {
-                                authViewModel
-                                    .clearMessage()
-
-                                navController
-                                    .popBackStack()
-                            },
-
-                            onBackClick = {
-                                authViewModel
-                                    .clearMessage()
-
-                                navController
-                                    .popBackStack()
-                            },
-
-                            authViewModel =
-                                authViewModel
+                            userRole = UserRole.BUYER,
+                            onSignUpSuccess = { returnToLogin() },
+                            onLoginClick = { returnToLogin() },
+                            onBackClick = returnToLogin,
+                            authViewModel = authViewModel
                         )
                     }
 
                     UserRole.FARMER -> {
                         FarmerSignUpScreen(
-                            onSignUpSuccess = {
-                                authViewModel
-                                    .clearMessage()
-
-                                navController
-                                    .popBackStack()
-                            },
-
-                            onLoginClick = {
-                                authViewModel
-                                    .clearMessage()
-
-                                navController
-                                    .popBackStack()
-                            },
-
-                            onBackClick = {
-                                authViewModel
-                                    .clearMessage()
-
-                                navController
-                                    .popBackStack()
-                            },
-
-                            authViewModel =
-                                authViewModel
+                            onSignUpSuccess = { returnToLogin() },
+                            onLoginClick = { returnToLogin() },
+                            onBackClick = returnToLogin,
+                            authViewModel = authViewModel
                         )
                     }
 
                     else -> {
-                        LaunchedEffect(
-                            userRole
-                        ) {
-                            authViewModel
-                                .showErrorMessage(
-                                    "Admin accounts cannot sign up."
-                                )
-
-                            navController
-                                .popBackStack()
+                        TextButton(onClick = returnToLogin) {
+                            Text("Admin accounts cannot sign up. Go back")
                         }
                     }
                 }
             }
 
-            composable(
-                route = AppData.HOME_ROUTE
-            ) {
-                HomeScreen(
-                    onNavigate =
-                        onPageNavigate
-                )
+            composable(AppData.HOME_ROUTE) {
+                HomeScreen(onNavigate = onPageNavigate)
             }
 
-            composable(
-                route = AppData.MARKET_ROUTE
-            ) {
+            composable(AppData.MARKET_ROUTE) {
                 MarketScreen(
                     onNavigate = { route ->
-                        navController.navigate(
-                            route
-                        )
-                    },
-
-                    cartViewModel =
-                        cartViewModel
-                )
-            }
-
-            composable(
-                route = CART_ROUTE
-            ) {
-                CartScreen(
-                    onBack = {
-                        navController
-                            .popBackStack()
-                    },
-
-                    onCheckout = {
-                        navController.navigate(
-                            PAYMENT_ROUTE
-                        )
-                    },
-
-                    cartViewModel =
-                        cartViewModel
-                )
-            }
-
-            composable(
-                route = PAYMENT_ROUTE
-            ) {
-                MarketPaymentScreen(
-                    onBack = {
-                        navController
-                            .popBackStack()
-                    },
-
-                    onPaymentSuccess = {
-                        navController.navigate(
-                            AppData.MARKET_ROUTE
-                        ) {
-                            popUpTo(
-                                AppData.MARKET_ROUTE
-                            ) {
-                                inclusive = true
-                            }
+                        navController.navigate(route) {
+                            launchSingleTop = true
                         }
                     },
-
-                    cartViewModel =
-                        cartViewModel
+                    cartViewModel = cartViewModel
                 )
             }
-            composable(
-                route =
-                    AppData.FOOD_BOX_ROUTE
-            ) {
+
+            composable(CART_ROUTE) { entry ->
+                CartScreen(
+                    onBack = {
+                        navController.popBackStackSafely(entry)
+                    },
+                    onCheckout = {
+                        navController.navigate(PAYMENT_ROUTE) {
+                            launchSingleTop = true
+                        }
+                    },
+                    cartViewModel = cartViewModel
+                )
+            }
+
+            composable(PAYMENT_ROUTE) { entry ->
+                MarketPaymentScreen(
+                    onBack = {
+                        navController.popBackStackSafely(entry)
+                    },
+                    onPaymentSuccess = {
+                        navController.navigate(AppData.MARKET_ROUTE) {
+                            popUpTo(AppData.MARKET_ROUTE) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    cartViewModel = cartViewModel
+                )
+            }
+
+            composable(AppData.FOOD_BOX_ROUTE) {
                 val userId =
-                    LocalAccountStorage
-                        .getProfile(context)
-                        ?.id
+                    LocalAccountStorage.getProfile(context)?.id
 
                 LaunchedEffect(userId) {
-                    foodBoxViewModel
-                        .refreshActiveSubscription(
-                            userId
-                        )
+                    foodBoxViewModel.refreshActiveSubscription(userId)
                 }
 
                 FoodBoxPlansScreen(
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
-                    onViewPlanClick = {
-                            planId ->
-
+                    foodBoxViewModel = foodBoxViewModel,
+                    onViewPlanClick = { planId ->
                         navController.navigate(
-                            AppData
-                                .getFoodBoxDetailRoute(
-                                    planId
-                                )
-                        )
+                            AppData.getFoodBoxDetailRoute(planId)
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
-
                     onManageClick = {
                         navController.navigate(
-                            AppData
-                                .FOOD_BOX_MANAGE_ROUTE
-                        )
+                            AppData.FOOD_BOX_MANAGE_ROUTE
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
             composable(
-                route =
-                    AppData.FOOD_BOX_DETAIL_ROUTE,
-
+                route = AppData.FOOD_BOX_DETAIL_ROUTE,
                 arguments = listOf(
-                    navArgument(
-                        PLAN_ID_ARGUMENT
-                    ) {
-                        type =
-                            NavType.StringType
+                    navArgument(PLAN_ID_ARGUMENT) {
+                        type = NavType.StringType
                     }
                 )
-            ) { backStackEntry ->
-
-                val planId =
-                    backStackEntry
-                        .arguments
-                        ?.getString(
-                            PLAN_ID_ARGUMENT
-                        )
-                        .orEmpty()
+            ) { entry ->
+                val planId = entry.arguments
+                    ?.getString(PLAN_ID_ARGUMENT)
+                    .orEmpty()
 
                 FoodBoxDetailScreen(
                     planId = planId,
-
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
+                    foodBoxViewModel = foodBoxViewModel,
                     onBackClick = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-
                     onCustomizeClick = {
-                        foodBoxViewModel
-                            .selectPlan(planId)
-
+                        foodBoxViewModel.selectPlan(planId)
                         navController.navigate(
-                            AppData
-                                .FOOD_BOX_CUSTOMIZE_ROUTE
-                        )
+                            AppData.FOOD_BOX_CUSTOMIZE_ROUTE
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
-
                     onManageClick = {
                         navController.navigate(
-                            AppData
-                                .FOOD_BOX_MANAGE_ROUTE
-                        )
+                            AppData.FOOD_BOX_MANAGE_ROUTE
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
-            composable(
-                route =
-                    AppData.FOOD_BOX_CUSTOMIZE_ROUTE
-            ) {
+            composable(AppData.FOOD_BOX_CUSTOMIZE_ROUTE) { entry ->
                 CustomizeFoodBoxScreen(
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
+                    foodBoxViewModel = foodBoxViewModel,
                     onBackClick = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-
                     onContinueClick = {
                         navController.navigate(
-                            AppData
-                                .FOOD_BOX_SCHEDULE_ROUTE
-                        )
+                            AppData.FOOD_BOX_SCHEDULE_ROUTE
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
-            composable(
-                route =
-                    AppData.FOOD_BOX_SCHEDULE_ROUTE
-            ) {
+            composable(AppData.FOOD_BOX_SCHEDULE_ROUTE) { entry ->
                 DeliveryScheduleScreen(
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
+                    foodBoxViewModel = foodBoxViewModel,
                     onBackClick = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-
                     onContinueClick = {
                         navController.navigate(
-                            AppData
-                                .FOOD_BOX_CHECKOUT_ROUTE
-                        )
+                            AppData.FOOD_BOX_CHECKOUT_ROUTE
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
-            composable(
-                route =
-                    AppData.FOOD_BOX_CHECKOUT_ROUTE
-            ) {
+            composable(AppData.FOOD_BOX_CHECKOUT_ROUTE) { entry ->
                 FoodBoxCheckoutScreen(
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
+                    foodBoxViewModel = foodBoxViewModel,
                     onBackClick = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-
                     onSubscribeClick = {
                         val userId =
-                            LocalAccountStorage
-                                .getProfile(context)
-                                ?.id
+                            LocalAccountStorage.getProfile(context)?.id
 
-                        foodBoxViewModel
-                            .confirmSubscription(
-                                userId = userId,
-
-                                onFinished = {
-                                    navController.navigate(
-                                        AppData
-                                            .FOOD_BOX_SUCCESS_ROUTE
-                                    ) {
-                                        popUpTo(
-                                            AppData
-                                                .FOOD_BOX_ROUTE
-                                        )
-                                    }
+                        foodBoxViewModel.confirmSubscription(
+                            userId = userId,
+                            onFinished = {
+                                navController.navigate(
+                                    AppData.FOOD_BOX_SUCCESS_ROUTE
+                                ) {
+                                    popUpTo(AppData.FOOD_BOX_ROUTE)
+                                    launchSingleTop = true
                                 }
-                            )
+                            }
+                        )
                     }
                 )
             }
 
-            composable(
-                route =
-                    AppData.FOOD_BOX_SUCCESS_ROUTE
-            ) {
+            composable(AppData.FOOD_BOX_SUCCESS_ROUTE) {
                 SubscriptionSuccessScreen(
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
+                    foodBoxViewModel = foodBoxViewModel,
                     onManageClick = {
                         navController.navigate(
-                            AppData
-                                .FOOD_BOX_MANAGE_ROUTE
-                        )
+                            AppData.FOOD_BOX_MANAGE_ROUTE
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
-
                     onBrowseMoreClick = {
-                        navController.navigate(
-                            AppData.FOOD_BOX_ROUTE
-                        ) {
-                            popUpTo(
-                                AppData.FOOD_BOX_ROUTE
-                            )
-
+                        navController.navigate(AppData.FOOD_BOX_ROUTE) {
+                            popUpTo(AppData.FOOD_BOX_ROUTE)
                             launchSingleTop = true
                         }
                     }
                 )
             }
 
-            composable(
-                route =
-                    AppData.FOOD_BOX_MANAGE_ROUTE
-            ) {
+            composable(AppData.FOOD_BOX_MANAGE_ROUTE) { entry ->
                 ManageSubscriptionScreen(
-                    foodBoxViewModel =
-                        foodBoxViewModel,
-
+                    foodBoxViewModel = foodBoxViewModel,
                     onBackClick = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-
                     onBrowsePlansClick = {
-                        navController.navigate(
-                            AppData.FOOD_BOX_ROUTE
-                        ) {
-                            popUpTo(
-                                AppData.FOOD_BOX_ROUTE
-                            )
-
+                        navController.navigate(AppData.FOOD_BOX_ROUTE) {
+                            popUpTo(AppData.FOOD_BOX_ROUTE)
                             launchSingleTop = true
                         }
                     }
                 )
             }
 
-            composable(
-                route =
-                    AppData.MEALS_ROUTE
-            ) {
+            composable(AppData.MEALS_ROUTE) {
                 MealsScreen(
-                    onViewDetails = {
-                            mealId ->
-
+                    onViewDetails = { mealId ->
                         navController.navigate(
-                            getMealDetailRoute(
-                                mealId
-                            )
-                        )
+                            getMealDetailRoute(mealId)
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
-
                     onFavouriteClick = {
-                        navController.navigate(
-                            MEAL_FAVOURITES_ROUTE
-                        )
+                        navController.navigate(MEAL_FAVOURITES_ROUTE) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
-            composable(
-                route =
-                    MEAL_FAVOURITES_ROUTE
-            ) {
+            composable(MEAL_FAVOURITES_ROUTE) { entry ->
                 FavouriteScreen(
                     onBack = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-
-                    onViewDetails = {
-                            mealId ->
-
+                    onViewDetails = { mealId ->
                         navController.navigate(
-                            getMealDetailRoute(
-                                mealId
-                            )
-                        )
+                            getMealDetailRoute(mealId)
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
             composable(
-                route =
-                    MEAL_DETAIL_ROUTE,
-
+                route = MEAL_DETAIL_ROUTE,
                 arguments = listOf(
-                    navArgument(
-                        MEAL_ID_ARGUMENT
-                    ) {
-                        type =
-                            NavType.IntType
+                    navArgument(MEAL_ID_ARGUMENT) {
+                        type = NavType.IntType
                     }
                 )
-            ) { backStackEntry ->
-
+            ) { entry ->
                 val mealId =
-                    backStackEntry
-                        .arguments
-                        ?.getInt(
-                            MEAL_ID_ARGUMENT
-                        )
+                    entry.arguments?.getInt(MEAL_ID_ARGUMENT)
 
-                val meal =
-                    mealId?.let {
-                        MealData
-                            .getMealById(it)
-                    }
+                val meal = mealId?.let {
+                    MealData.getMealById(it)
+                }
 
                 if (meal != null) {
                     MealDetailScreen(
                         meal = meal,
-
                         onBack = {
-                            navController
-                                .popBackStack()
+                            navController.popBackStackSafely(entry)
                         }
                     )
                 } else {
-                    LaunchedEffect(mealId) {
-                        navController
-                            .popBackStack()
+                    TextButton(
+                        onClick = {
+                            navController.popBackStackSafely(entry)
+                        }
+                    ) {
+                        Text("Meal not found. Go back")
                     }
                 }
             }
 
-            composable(
-                route =
-                    AppData.PROFILE_ROUTE
-            ) {
-                ProfileScreen(
-                    onNavigate =
-                        onPageNavigate
-                )
+            composable(AppData.PROFILE_ROUTE) {
+                ProfileScreen(onNavigate = onPageNavigate)
             }
 
-            composable(
-                route =
-                    AppData.FARMER_ROUTE
-            ) {
-                FarmerDashboardScreen(
-                    onNavigate =
-                        onPageNavigate
-                )
+            composable(AppData.FARMER_ROUTE) {
+                FarmerDashboardScreen(onNavigate = onPageNavigate)
             }
 
-            composable(
-                route =
-                    AppData.ADMIN_ROUTE
-            ) {
-                AdminDashboardScreen(
-                    onNavigate =
-                        onPageNavigate
-                )
+            composable(AppData.ADMIN_ROUTE) {
+                AdminDashboardScreen(onNavigate = onPageNavigate)
             }
         }
     }
+
+    AuthRateLimitDialog(authViewModel = authViewModel)
 }

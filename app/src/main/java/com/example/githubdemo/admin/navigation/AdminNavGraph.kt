@@ -31,141 +31,78 @@ import com.example.githubdemo.admin.viewmodel.FoodBoxViewModel
 import com.example.githubdemo.admin.viewmodel.NotificationViewModel
 import com.example.githubdemo.admin.viewmodel.UserManagementViewModel
 import com.example.githubdemo.admin.viewmodel.UserProfileViewModel
+import com.example.githubdemo.nav.popBackStackSafely
 
-private const val HOME_ROUTE =
-    "home"
-
-private const val USER_ROUTE =
-    "user"
-
-private const val FARMER_ROUTE =
-    "farmer"
-
-private const val ANNOUNCEMENT_ROUTE =
-    "announcement"
-
-private const val NOTIFICATION_ROUTE =
-    "notification"
-
-private const val FOOD_BOX_ROUTE =
-    "foodbox"
-
-private const val FOOD_ITEMS_ROUTE =
-    "foodItems"
-
-private const val PROFILE_ROUTE =
-    "profile/{id}"
-
-private const val ANNOUNCEMENT_DETAIL_ROUTE =
-    "announcementDetail/{id}"
-
-private const val FOOD_BOX_DETAIL_ROUTE =
-    "foodboxDetail/{id}"
-
-private const val FOOD_ITEM_EDIT_ROUTE =
-    "foodItemDetailEdit/{id}"
-
-private const val ID_ARGUMENT =
-    "id"
+private const val HOME_ROUTE = "home"
+private const val USER_ROUTE = "user"
+private const val FARMER_ROUTE = "farmer"
+private const val ANNOUNCEMENT_ROUTE = "announcement"
+private const val NOTIFICATION_ROUTE = "notification"
+private const val FOOD_BOX_ROUTE = "foodbox"
+private const val FOOD_ITEMS_ROUTE = "foodItems"
+private const val PROFILE_ROUTE = "profile/{id}"
+private const val ANNOUNCEMENT_DETAIL_ROUTE = "announcementDetail/{id}"
+private const val FOOD_BOX_DETAIL_ROUTE = "foodboxDetail/{id}"
+private const val FOOD_ITEM_EDIT_ROUTE = "foodItemDetailEdit/{id}"
+private const val ID_ARGUMENT = "id"
 
 @Composable
 fun AdminNavGraph(
     onLogout: () -> Unit
 ) {
-    val context =
-        LocalContext.current
+    val context = LocalContext.current
+    val navController = rememberNavController()
 
-    val navController =
-        rememberNavController()
+    val dashboardViewModel: AdminDashboardViewModel = viewModel()
+    val userViewModel: UserManagementViewModel = viewModel()
+    val userProfileViewModel: UserProfileViewModel = viewModel()
+    val farmerViewModel: FarmerVerificationViewModel = viewModel()
+    val announcementViewModel: AnnouncementViewModel = viewModel()
+    val foodBoxViewModel: FoodBoxViewModel = viewModel()
 
-    val dashboardViewModel:
-            AdminDashboardViewModel =
-        viewModel()
+    val notificationViewModel: NotificationViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(
+                modelClass: Class<T>
+            ): T {
+                return NotificationViewModel(
+                    context.applicationContext
+                ) as T
+            }
+        }
+    )
 
-    val userViewModel:
-            UserManagementViewModel =
-        viewModel()
-
-    val userProfileViewModel:
-            UserProfileViewModel =
-        viewModel()
-
-    val farmerViewModel:
-            FarmerVerificationViewModel =
-        viewModel()
-
-    val announcementViewModel:
-            AnnouncementViewModel =
-        viewModel()
-
-    val foodBoxViewModel:
-            FoodBoxViewModel =
-        viewModel()
-
-    val notificationViewModel:
-            NotificationViewModel =
-        viewModel(
-            factory =
-                object :
-                    ViewModelProvider.Factory {
-
-                    @Suppress(
-                        "UNCHECKED_CAST"
-                    )
-                    override fun <T : ViewModel> create(
-                        modelClass: Class<T>
-                    ): T {
-                        return NotificationViewModel(
-                            context.applicationContext
-                        ) as T
-                    }
-                }
-        )
-
-    val currentRoute =
-        navController
-            .currentBackStackEntryAsState()
-            .value
-            ?.destination
-            ?.route
-            ?: HOME_ROUTE
+    val currentRoute = navController
+        .currentBackStackEntryAsState()
+        .value
+        ?.destination
+        ?.route
+        ?: HOME_ROUTE
 
     Scaffold(
         topBar = {
             AdminTopBar(
-                title =
-                    getAdminTitle(
-                        currentRoute
-                    ),
-                onLogout =
-                    onLogout,
+                title = getAdminTitle(currentRoute),
+                onLogout = onLogout,
                 onNotificationClick = {
-                    navController.navigate(
-                        NOTIFICATION_ROUTE
-                    ) {
+                    navController.navigate(NOTIFICATION_ROUTE) {
                         launchSingleTop = true
                     }
                 },
-                unreadCount =
-                    notificationViewModel
-                        .unreadCount()
+                unreadCount = notificationViewModel.unreadCount()
             )
         },
         bottomBar = {
             AdminBottomBar(
-                currentRoute =
-                    currentRoute,
+                currentRoute = currentRoute,
                 onNavigate = { route ->
-                    navController.navigate(
-                        route
-                    ) {
+                    navController.navigate(route) {
                         launchSingleTop = true
                         restoreState = true
 
                         popUpTo(
-                            navController
-                                .graph
-                                .startDestinationId
+                            navController.graph.startDestinationId
                         ) {
                             saveState = true
                         }
@@ -175,237 +112,139 @@ fun AdminNavGraph(
         }
     ) { innerPadding ->
         NavHost(
-            navController =
-                navController,
-            startDestination =
-                HOME_ROUTE,
-            modifier =
-                Modifier.padding(
-                    innerPadding
-                )
+            navController = navController,
+            startDestination = HOME_ROUTE,
+            modifier = Modifier.padding(innerPadding)
         ) {
-            composable(
-                HOME_ROUTE
-            ) {
+            composable(HOME_ROUTE) {
                 AdminDashboardScreen(
-                    viewModel =
-                        dashboardViewModel
+                    viewModel = dashboardViewModel
                 )
             }
 
-            composable(
-                USER_ROUTE
-            ) {
+            composable(USER_ROUTE) {
                 UserManagementScreen(
-                    navController =
-                        navController,
+                    navController = navController,
                     onSelectUser = { user ->
-                        navController.navigate(
-                            "profile/${user.id}"
-                        )
+                        navController.navigate("profile/${user.id}") {
+                            launchSingleTop = true
+                        }
                     },
-                    viewModel =
-                        userViewModel
+                    viewModel = userViewModel
                 )
             }
 
-            composable(
-                PROFILE_ROUTE
-            ) { entry ->
+            composable(PROFILE_ROUTE) { entry ->
                 val userId =
-                    entry.arguments
-                        ?.getString(
-                            ID_ARGUMENT
-                        )
-                        .orEmpty()
+                    entry.arguments?.getString(ID_ARGUMENT).orEmpty()
 
                 UserProfileScreen(
-                    navController =
-                        navController,
-                    userId =
-                        userId,
-                    viewModel =
-                        userProfileViewModel
+                    navController = navController,
+                    userId = userId,
+                    viewModel = userProfileViewModel
                 )
             }
 
-            composable(
-                FARMER_ROUTE
-            ) {
+            composable(FARMER_ROUTE) {
                 FarmerVerificationScreen(
-                    navController =
-                        navController,
-                    viewModel =
-                        farmerViewModel
+                    navController = navController,
+                    viewModel = farmerViewModel
                 )
             }
 
-            composable(
-                ANNOUNCEMENT_ROUTE
-            ) {
+            composable(ANNOUNCEMENT_ROUTE) {
                 AdminAnnouncementScreen(
-                    navController =
-                        navController,
-                    viewModel =
-                        announcementViewModel
+                    navController = navController,
+                    viewModel = announcementViewModel
                 )
             }
 
-            composable(
-                NOTIFICATION_ROUTE
-            ) {
+            composable(NOTIFICATION_ROUTE) { entry ->
                 NotificationScreen(
                     onBack = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-                    viewModel =
-                        notificationViewModel
+                    viewModel = notificationViewModel
                 )
             }
 
-            composable(
-                FOOD_BOX_ROUTE
-            ) {
+            composable(FOOD_BOX_ROUTE) {
                 FoodBoxManagementScreen(
-                    viewModel =
-                        foodBoxViewModel,
-                    onFoodBoxClick = {
-                            foodBoxId ->
-
+                    viewModel = foodBoxViewModel,
+                    onFoodBoxClick = { foodBoxId ->
                         navController.navigate(
-                            "foodboxDetail/" +
-                                    foodBoxId
-                        )
+                            "foodboxDetail/$foodBoxId"
+                        ) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
 
-            composable(
-                FOOD_BOX_DETAIL_ROUTE
-            ) { entry ->
+            composable(FOOD_BOX_DETAIL_ROUTE) { entry ->
                 val foodBoxId =
-                    entry.arguments
-                        ?.getString(
-                            ID_ARGUMENT
-                        )
-                        .orEmpty()
+                    entry.arguments?.getString(ID_ARGUMENT).orEmpty()
 
                 FoodBoxDetailsScreen(
-                    foodBoxId =
-                        foodBoxId,
-                    navController =
-                        navController,
-                    viewModel =
-                        foodBoxViewModel,
+                    foodBoxId = foodBoxId,
+                    navController = navController,
+                    viewModel = foodBoxViewModel,
                     onBack = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     }
                 )
             }
 
-            composable(
-                FOOD_ITEMS_ROUTE
-            ) {
+            composable(FOOD_ITEMS_ROUTE) { entry ->
                 FoodItemEditScreen(
-                    viewModel =
-                        foodBoxViewModel,
+                    viewModel = foodBoxViewModel,
                     onBack = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     }
                 )
             }
 
-            composable(
-                FOOD_ITEM_EDIT_ROUTE
-            ) { entry ->
+            composable(FOOD_ITEM_EDIT_ROUTE) { entry ->
                 val foodBoxId =
-                    entry.arguments
-                        ?.getString(
-                            ID_ARGUMENT
-                        )
-                        .orEmpty()
+                    entry.arguments?.getString(ID_ARGUMENT).orEmpty()
 
                 FoodItemEditScreen(
-                    viewModel =
-                        foodBoxViewModel,
-                    foodBoxId =
-                        foodBoxId,
+                    viewModel = foodBoxViewModel,
+                    foodBoxId = foodBoxId,
                     onBack = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     }
                 )
             }
 
-            composable(
-                ANNOUNCEMENT_DETAIL_ROUTE
-            ) { entry ->
+            composable(ANNOUNCEMENT_DETAIL_ROUTE) { entry ->
                 val announcementId =
-                    entry.arguments
-                        ?.getString(
-                            ID_ARGUMENT
-                        )
-                        .orEmpty()
+                    entry.arguments?.getString(ID_ARGUMENT).orEmpty()
 
                 AnnouncementDetailScreen(
-                    announcementId =
-                        announcementId,
+                    announcementId = announcementId,
                     onBack = {
-                        navController
-                            .popBackStack()
+                        navController.popBackStackSafely(entry)
                     },
-                    viewModel =
-                        announcementViewModel
+                    viewModel = announcementViewModel
                 )
             }
         }
     }
 }
 
-private fun getAdminTitle(
-    route: String
-): String {
+private fun getAdminTitle(route: String): String {
     return when {
-        route == HOME_ROUTE ->
-            "Dashboard"
-
-        route == USER_ROUTE ->
-            "User Management"
-
-        route.startsWith(
-            "profile"
-        ) ->
-            "User Profile"
-
-        route == FARMER_ROUTE ->
-            "Farmer Verification"
-
-        route == ANNOUNCEMENT_ROUTE ->
-            "Announcement"
-
-        route == NOTIFICATION_ROUTE ->
-            "Notification"
-
-        route == FOOD_BOX_ROUTE ->
-            "Food Box"
-
-        route.startsWith(
-            "foodboxDetail"
-        ) ->
-            "Food Box Details"
-
-        route.startsWith(
-            "foodItemDetailEdit"
-        ) ->
-            "Edit Item"
-
-        route == FOOD_ITEMS_ROUTE ->
-            "Edit Items"
-
-        else ->
-            "Dashboard"
+        route == HOME_ROUTE -> "Dashboard"
+        route == USER_ROUTE -> "User Management"
+        route.startsWith("profile") -> "User Profile"
+        route == FARMER_ROUTE -> "Farmer Verification"
+        route == ANNOUNCEMENT_ROUTE -> "Announcement"
+        route == NOTIFICATION_ROUTE -> "Notification"
+        route == FOOD_BOX_ROUTE -> "Food Box"
+        route.startsWith("foodboxDetail") -> "Food Box Details"
+        route.startsWith("foodItemDetailEdit") -> "Edit Item"
+        route == FOOD_ITEMS_ROUTE -> "Edit Items"
+        else -> "Dashboard"
     }
 }
